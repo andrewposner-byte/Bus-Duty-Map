@@ -1,8 +1,7 @@
-// ------------------ CONFIG ------------------
-// Update with your repo details
-const REPO_OWNER = "andrewposner-byte";
-const REPO_NAME = "Bus-Duty-Map";
+// URL of your GitHub Actions endpoint (replace with your actual workflow dispatch endpoint)
+const SAVE_ENDPOINT = "https://api.github.com/repos/andrewposner-byte/Bus-Duty-Map/dispatches";
 
+// Local bus state
 let buses = [];
 let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
 
@@ -10,7 +9,6 @@ let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
 function renderBuses() {
   const busMap = document.getElementById("busMap");
   document.querySelectorAll(".bus").forEach(el => el.remove());
-  
   buses.forEach(bus => {
     const g = document.createElementNS("http://www.w3.org/2000/svg","g");
     g.setAttribute("class","bus");
@@ -39,7 +37,6 @@ function renderBuses() {
     g.addEventListener("mousedown", e=>startDrag(e,g));
     g.addEventListener("touchstart", e=>startDrag(e.touches[0], g));
     g.addEventListener("contextmenu", e=>{ e.preventDefault(); deleteBus(bus.id); });
-
     busMap.appendChild(g);
   });
 }
@@ -49,7 +46,7 @@ function addBus() {
   const id = document.getElementById("busId").value.trim() || String(buses.length+1);
   buses.push({ id, x:120 + buses.length*40, y:600 });
   renderBuses();
-  saveBuses();
+  saveBusState();
 }
 
 function startDrag(evt, element) {
@@ -87,7 +84,7 @@ function endDrag(evt){
   const match = /translate\(([-\d.]+),([-\d.]+)\)/.exec(transform);
   const x = parseFloat(match[1]), y = parseFloat(match[2]);
   const bus = buses.find(b=>b.id===id);
-  if(bus){ bus.x=x; bus.y=y; saveBuses(); }
+  if(bus){ bus.x=x; bus.y=y; saveBusState(); }
   dragTarget=null;
   dragBusId=null;
   window.removeEventListener("mousemove", drag);
@@ -100,41 +97,43 @@ function deleteBus(id){
   const idx = buses.findIndex(b=>b.id===id);
   if(idx>=0){
     buses.splice(idx,1);
-    saveBuses();
+    saveBusState();
     renderBuses();
   }
 }
 
-// ------------------ SAVE / LOAD ------------------
-// Save using GitHub Issues (workflow will commit to JSON)
-async function saveBuses(){
+// ------------------ SAVE STATE ------------------
+async function saveBusState() {
   try {
-    const res = await fetch(
-      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues`,
-      {
-        method: "POST",
-        headers: {
-          "Accept": "application/vnd.github+json",
-        },
-        body: JSON.stringify({
-          title: "Bus Update",
-          body: JSON.stringify(buses),
-        }),
-      }
-    );
-    if(!res.ok) throw new Error(`GitHub API error: ${res.status}`);
-    document.getElementById("status").textContent = "Saved ✓";
-  } catch(err) {
-    console.error("Save error:", err);
+    // Send to GitHub Actions workflow endpoint
+    const res = await fetch(SAVE_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Accept": "application/vnd.github.v3+json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        event_type: "update_state",
+        client_payload: { buses }
+      })
+    });
+    if (res.ok) {
+      document.getElementById("status").textContent = "Saved ✓";
+    } else {
+      document.getElementById("status").textContent = "Save failed";
+      console.error("Save failed:", await res.text());
+    }
+  } catch(e) {
+    console.error("Save error:", e);
     document.getElementById("status").textContent = "Save error";
   }
 }
 
-// Load current state from GitHub Pages JSON
+// ------------------ LOAD STATE ------------------
 async function loadBuses() {
   try {
-    const res = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/map-state-midday.json?_=${Date.now()}`);
-    if(!res.ok) throw new Error(`Fetch error: ${res.status}`);
+    const res = await fetch("https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json?_=" + Date.now());
+    if (!res.ok) return;
     const data = await res.json();
     const serverBuses = data.buses || [];
     serverBuses.forEach(serverBus => {
@@ -148,7 +147,7 @@ async function loadBuses() {
       }
     });
     renderBuses();
-  } catch(err) { console.error("Load error:", err); }
+  } catch(e) { console.error("Load error:", e); }
 }
 
 // ------------------ AUTO REFRESH ------------------
