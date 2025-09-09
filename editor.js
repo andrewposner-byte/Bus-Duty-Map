@@ -119,7 +119,8 @@ async function loadBuses() {
 
 async function saveBusState(){
   try {
-    await fetch(`https://api.github.com/repos/andrewposner-byte/Bus-Duty-Map/contents/state.json`, {
+    const res = await fetch("https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json?_=" + Date.now(), { cache:"no-store" });
+
       method: "PUT",
       headers: {
         "Authorization": `token ${GH_PAT}`,
