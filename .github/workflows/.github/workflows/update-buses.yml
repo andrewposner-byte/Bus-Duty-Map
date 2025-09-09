@@ -13,7 +13,7 @@ jobs:
 
       - name: Update JSON
         run: |
-          echo '${{ github.event.client_payload.data }}' > map-state-midday.json
+          echo '${{ github.event.client_payload.data }}' > state.json
 
       - name: Commit and push changes
         run: |
