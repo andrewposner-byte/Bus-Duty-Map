@@ -1,15 +1,25 @@
+// Viewer.js for Bus Duty Map (read-only)
 const URL = "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/map-state-midday.json";
+
 let buses = [];
+let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
 
 // ------------------ RENDER ------------------
 function renderBuses() {
   const busMap = document.getElementById("busMap");
+  if (!busMap) return;
   document.querySelectorAll(".bus").forEach(el => el.remove());
+
+  if (!Array.isArray(buses)) {
+    console.warn("Buses is not an array:", buses);
+    buses = [];
+  }
 
   buses.forEach(bus => {
     const g = document.createElementNS("http://www.w3.org/2000/svg","g");
     g.setAttribute("class","bus");
     g.setAttribute("transform",`translate(${bus.x},${bus.y})`);
+    g.dataset.id = bus.id;
 
     const body = document.createElementNS("http://www.w3.org/2000/svg","rect");
     body.setAttribute("x",0); body.setAttribute("y",10);
@@ -37,12 +47,18 @@ function renderBuses() {
 // ------------------ LOAD ------------------
 async function loadBuses() {
   try {
-    const res = await fetch(URL + "?_=" + Date.now());
-    if(!res.ok) return;
-    buses = await res.json();
+    const res = await fetch(URL + "?_=" + Date.now(), { cache:"no-store" });
+    if(!res.ok) {
+      console.error("Fetch failed:", res.status, res.statusText);
+      return;
+    }
+
+    const data = await res.json();
+    buses = Array.isArray(data) ? data : data.buses || [];
     renderBuses();
-  } catch(e) {
-    console.error("Load error:", e);
+
+  } catch(e) { 
+    console.error("Load error:", e); 
   }
 }
 
