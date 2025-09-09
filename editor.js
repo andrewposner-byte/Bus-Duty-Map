@@ -1,18 +1,13 @@
-const JSON_URL = "map-state-midday.json";
-let buses = [], dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
+const URL = "./map-state-midday.json"; // points to GitHub JSON
 
-async function loadBuses() {
-  try {
-    const res = await fetch(JSON_URL);
-    const data = await res.json();
-    buses = data.buses || [];
-    renderBuses();
-  } catch(e){ console.error(e); }
-}
+let buses = [];
+let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
 
+// ------------------ RENDER ------------------
 function renderBuses() {
   const busMap = document.getElementById("busMap");
   document.querySelectorAll(".bus").forEach(el => el.remove());
+
   buses.forEach(bus => {
     const g = document.createElementNS("http://www.w3.org/2000/svg","g");
     g.setAttribute("class","bus");
@@ -45,10 +40,12 @@ function renderBuses() {
   });
 }
 
+// ------------------ BUS CONTROL ------------------
 function addBus() {
-  const id = document.getElementById("busId").value.trim() || `B${buses.length+1}`;
-  buses.push({id, x:120 + buses.length*40, y:600});
+  const id = document.getElementById("busId").value.trim() || String(buses.length+1);
+  buses.push({ id, x:120 + buses.length*40, y:600 });
   renderBuses();
+  saveBusState();
 }
 
 function startDrag(evt, element) {
@@ -57,10 +54,12 @@ function startDrag(evt, element) {
   dragBusId = element.dataset.id;
   const transform = element.getAttribute("transform");
   const match = /translate\(([-\d.]+),([-\d.]+)\)/.exec(transform);
-  offsetX = evt.clientX - parseFloat(match[1]);
-  offsetY = evt.clientY - parseFloat(match[2]);
+  offsetX = (evt.clientX ?? evt.pageX) - parseFloat(match[1]);
+  offsetY = (evt.clientY ?? evt.pageY) - parseFloat(match[2]);
   window.addEventListener("mousemove", drag);
   window.addEventListener("mouseup", endDrag);
+  window.addEventListener("touchmove", touchDrag, { passive: false });
+  window.addEventListener("touchend", endDrag);
 }
 
 function drag(evt) {
@@ -70,20 +69,72 @@ function drag(evt) {
   dragTarget.setAttribute("transform",`translate(${x},${y})`);
 }
 
+function touchDrag(evt){
+  if(evt.touches.length){
+    evt.preventDefault();
+    drag(evt.touches[0]);
+  }
+}
+
 function endDrag(evt){
   if(!dragTarget) return;
   const id = dragTarget.dataset.id;
-  const match = /translate\(([-\d.]+),([-\d.]+)\)/.exec(dragTarget.getAttribute("transform"));
+  const transform = dragTarget.getAttribute("transform");
+  const match = /translate\(([-\d.]+),([-\d.]+)\)/.exec(transform);
+  const x = parseFloat(match[1]), y = parseFloat(match[2]);
   const bus = buses.find(b=>b.id===id);
-  if(bus){ bus.x=parseFloat(match[1]); bus.y=parseFloat(match[2]); }
-  dragTarget=null; dragBusId=null;
+  if(bus){ bus.x=x; bus.y=y; saveBusState(); }
+  dragTarget=null;
+  dragBusId=null;
   window.removeEventListener("mousemove", drag);
   window.removeEventListener("mouseup", endDrag);
+  window.removeEventListener("touchmove", touchDrag);
+  window.removeEventListener("touchend", endDrag);
 }
 
 function deleteBus(id){
-  buses = buses.filter(b=>b.id!==id);
-  renderBuses();
+  const idx = buses.findIndex(b=>b.id===id);
+  if(idx>=0){
+    buses.splice(idx,1);
+    saveBusState();
+    renderBuses();
+  }
 }
 
+// ------------------ SAVE / LOAD ------------------
+async function saveBusState(){
+  try {
+    // Save JSON back to GitHub via API (requires authentication)
+    // For simple static demo, localStorage can simulate save
+    localStorage.setItem("buses", JSON.stringify(buses));
+    document.getElementById("status").textContent = "Saved ✓";
+  } catch(e){
+    console.error("Save error:", e);
+    document.getElementById("status").textContent = "Save error";
+  }
+}
+
+async function loadBuses() {
+  try {
+    // Load buses from GitHub JSON
+    const res = await fetch(URL + "?_=" + Date.now());
+    if(!res.ok) return;
+    const serverBuses = await res.json();
+    // Keep dragging bus in place
+    serverBuses.forEach(serverBus => {
+      if(dragBusId && serverBus.id === dragBusId) return;
+      const localBus = buses.find(b => b.id===serverBus.id);
+      if(localBus){
+        localBus.x = serverBus.x;
+        localBus.y = serverBus.y;
+      } else {
+        buses.push(serverBus);
+      }
+    });
+    renderBuses();
+  } catch(e){ console.error("Load error:", e); }
+}
+
+// ------------------ AUTO REFRESH ------------------
+setInterval(loadBuses, 2000);
 loadBuses();
