@@ -46,7 +46,7 @@ function renderBuses() {
 // ------------------ LOAD ------------------
 async function loadBuses() {
   try {
-    const res = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/map-state-midday.json?_=${Date.now()}`);
+    const res = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/state.json?_=${Date.now()}`);
     if(!res.ok) throw new Error(`Fetch error: ${res.status}`);
     const data = await res.json();
     buses = data.buses || [];
