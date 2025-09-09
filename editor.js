@@ -1,7 +1,9 @@
-// URL of your GitHub Actions endpoint (replace with your actual workflow dispatch endpoint)
-const SAVE_ENDPOINT = "https://api.github.com/repos/andrewposner-byte/Bus-Duty-Map/dispatches";
+// URL to your GitHub-hosted JSON file
+const STATE_URL = "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json";
 
-// Local bus state
+// GitHub Personal Access Token for write access (stored securely)
+const GH_PAT = "YOUR_GH_PAT";
+
 let buses = [];
 let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
 
@@ -12,7 +14,7 @@ function renderBuses() {
   buses.forEach(bus => {
     const g = document.createElementNS("http://www.w3.org/2000/svg","g");
     g.setAttribute("class","bus");
-    g.setAttribute("transform",`translate(${bus.x},${bus.y})`);
+    g.setAttribute("transform", `translate(${bus.x},${bus.y})`);
     g.dataset.id = bus.id;
 
     const body = document.createElementNS("http://www.w3.org/2000/svg","rect");
@@ -34,9 +36,11 @@ function renderBuses() {
     text.textContent = bus.id;
 
     g.appendChild(body); g.appendChild(wheel1); g.appendChild(wheel2); g.appendChild(text);
-    g.addEventListener("mousedown", e=>startDrag(e,g));
-    g.addEventListener("touchstart", e=>startDrag(e.touches[0], g));
-    g.addEventListener("contextmenu", e=>{ e.preventDefault(); deleteBus(bus.id); });
+
+    g.addEventListener("mousedown", e => startDrag(e, g));
+    g.addEventListener("touchstart", e => startDrag(e.touches[0], g));
+    g.addEventListener("contextmenu", e => { e.preventDefault(); deleteBus(bus.id); });
+
     busMap.appendChild(g);
   });
 }
@@ -67,7 +71,7 @@ function drag(evt) {
   if(!dragTarget) return;
   const x = evt.clientX - offsetX;
   const y = evt.clientY - offsetY;
-  dragTarget.setAttribute("transform",`translate(${x},${y})`);
+  dragTarget.setAttribute("transform", `translate(${x},${y})`);
 }
 
 function touchDrag(evt){
@@ -83,10 +87,10 @@ function endDrag(evt){
   const transform = dragTarget.getAttribute("transform");
   const match = /translate\(([-\d.]+),([-\d.]+)\)/.exec(transform);
   const x = parseFloat(match[1]), y = parseFloat(match[2]);
-  const bus = buses.find(b=>b.id===id);
-  if(bus){ bus.x=x; bus.y=y; saveBusState(); }
-  dragTarget=null;
-  dragBusId=null;
+  const bus = buses.find(b => b.id === id);
+  if(bus){ bus.x = x; bus.y = y; saveBusState(); }
+  dragTarget = null;
+  dragBusId = null;
   window.removeEventListener("mousemove", drag);
   window.removeEventListener("mouseup", endDrag);
   window.removeEventListener("touchmove", touchDrag);
@@ -94,60 +98,44 @@ function endDrag(evt){
 }
 
 function deleteBus(id){
-  const idx = buses.findIndex(b=>b.id===id);
-  if(idx>=0){
+  const idx = buses.findIndex(b => b.id === id);
+  if(idx >= 0){
     buses.splice(idx,1);
     saveBusState();
     renderBuses();
   }
 }
 
-// ------------------ SAVE STATE ------------------
-async function saveBusState() {
+// ------------------ SAVE / LOAD ------------------
+async function loadBuses() {
   try {
-    // Send to GitHub Actions workflow endpoint
-    const res = await fetch(SAVE_ENDPOINT, {
-      method: "POST",
+    const res = await fetch(STATE_URL + "?_=" + Date.now(), { cache: "no-store" });
+    if(!res.ok) throw new Error(`Fetch error: ${res.status}`);
+    const data = await res.json();
+    buses = data.buses || [];
+    renderBuses();
+  } catch(e) { console.error("Load error:", e); }
+}
+
+async function saveBusState(){
+  try {
+    await fetch(`https://api.github.com/repos/andrewposner-byte/Bus-Duty-Map/contents/state.json`, {
+      method: "PUT",
       headers: {
-        "Accept": "application/vnd.github.v3+json",
+        "Authorization": `token ${GH_PAT}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        event_type: "update_state",
-        client_payload: { buses }
+        message: "Update bus state",
+        content: btoa(JSON.stringify({ buses })),
+        branch: "main"
       })
     });
-    if (res.ok) {
-      document.getElementById("status").textContent = "Saved ✓";
-    } else {
-      document.getElementById("status").textContent = "Save failed";
-      console.error("Save failed:", await res.text());
-    }
-  } catch(e) {
+    document.getElementById("status").textContent = "Saved ✓";
+  } catch(e){
     console.error("Save error:", e);
     document.getElementById("status").textContent = "Save error";
   }
-}
-
-// ------------------ LOAD STATE ------------------
-async function loadBuses() {
-  try {
-    const res = await fetch("https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json?_=" + Date.now());
-    if (!res.ok) return;
-    const data = await res.json();
-    const serverBuses = data.buses || [];
-    serverBuses.forEach(serverBus => {
-      if(dragBusId && serverBus.id === dragBusId) return;
-      const localBus = buses.find(b => b.id===serverBus.id);
-      if(localBus){
-        localBus.x = serverBus.x;
-        localBus.y = serverBus.y;
-      } else {
-        buses.push(serverBus);
-      }
-    });
-    renderBuses();
-  } catch(e) { console.error("Load error:", e); }
 }
 
 // ------------------ AUTO REFRESH ------------------
