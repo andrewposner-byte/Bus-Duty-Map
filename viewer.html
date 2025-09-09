@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Bus Viewer</title>
 <style>
 html, body { margin:0; height:100%; font-family: Arial, sans-serif; }
@@ -13,15 +13,33 @@ svg { width:92%; height:92%; max-width:100%; max-height:100%; }
 .lane2 { stroke:#16a34a; }
 .lane3 { stroke:#f59e0b; }
 .bus text { font-size:28px; font-weight:700; fill:#000; text-anchor:middle; dominant-baseline:middle; pointer-events:none; }
+#notArrived rect { fill:#f9fafb; stroke:#6b7280; stroke-dasharray:6 4; }
+#notArrived text { fill:#111827; font-weight:bold; }
+#departed rect { fill:#e0e7ff; stroke:#4f46e5; stroke-dasharray:6 4; }
+#departed text { fill:#1e3a8a; font-weight:bold; }
 </style>
 </head>
 <body>
-
 <div id="mapCanvas">
 <svg id="busMap" viewBox="0 0 1000 700">
   <path class="lane lane1" d="M180,100 L180,480 Q400,540 620,480 L620,100" />
   <path class="lane lane2" d="M240,140 L240,440 Q400,490 560,440 L560,140" />
   <path class="lane lane3" d="M300,180 L300,400 Q400,440 500,400 L500,180" />
+
+  <!-- Flagpole -->
+  <g id="flagpole" transform="translate(80,500)">
+    <rect x="0" y="-100" width="6" height="120" fill="#444"/>
+    <rect x="6" y="-95" width="50" height="30" fill="#b22234" stroke="black"/>
+    <rect x="6" y="-95" width="50" height="4" fill="white"/>
+    <rect x="6" y="-87" width="50" height="4" fill="white"/>
+    <rect x="6" y="-79" width="50" height="4" fill="white"/>
+    <rect x="6" y="-71" width="50" height="4" fill="white"/>
+    <rect x="6" y="-95" width="20" height="16" fill="#3c3b6e"/>
+    <circle cx="10" cy="-91" r="1.5" fill="white"/>
+    <circle cx="16" cy="-91" r="1.5" fill="white"/>
+    <circle cx="10" cy="-85" r="1.5" fill="white"/>
+    <circle cx="16" cy="-85" r="1.5" fill="white"/>
+  </g>
 
   <g id="notArrived" transform="translate(100,560)">
     <rect width="600" height="100" rx="12" ry="12" />
