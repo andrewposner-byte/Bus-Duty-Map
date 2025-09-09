@@ -1,1 +1,39 @@
-<!-- Full viewer.html content goes here -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bus Viewer</title>
+<style>
+html, body { margin:0; height:100%; font-family: Arial, sans-serif; }
+#mapCanvas { height:100%; width:100%; display:flex; justify-content:center; align-items:center; background:#f3f4f6; }
+svg { width:92%; height:92%; max-width:100%; max-height:100%; }
+.lane { fill:none; stroke-width:30; stroke-linecap:round; }
+.lane1 { stroke:#2563eb; }
+.lane2 { stroke:#16a34a; }
+.lane3 { stroke:#f59e0b; }
+.bus text { font-size:28px; font-weight:700; fill:#000; text-anchor:middle; dominant-baseline:middle; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<div id="mapCanvas">
+<svg id="busMap" viewBox="0 0 1000 700">
+  <path class="lane lane1" d="M180,100 L180,480 Q400,540 620,480 L620,100" />
+  <path class="lane lane2" d="M240,140 L240,440 Q400,490 560,440 L560,140" />
+  <path class="lane lane3" d="M300,180 L300,400 Q400,440 500,400 L500,180" />
+
+  <g id="notArrived" transform="translate(100,560)">
+    <rect width="600" height="100" rx="12" ry="12" />
+    <text x="300" y="55" text-anchor="middle">Not Arrived</text>
+  </g>
+  <g id="departed" transform="translate(800,20)">
+    <rect width="180" height="600" rx="10" ry="10" />
+    <text x="90" y="30" text-anchor="middle">Departed</text>
+  </g>
+</svg>
+</div>
+
+<script src="viewer.js"></script>
+</body>
+</html>
