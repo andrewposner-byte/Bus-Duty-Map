@@ -20,10 +20,7 @@ function renderBuses() {
     g.setAttribute("transform", `translate(${bus.x},${bus.y})`);
     g.dataset.id = bus.id;
 
-    const body = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "rect"
-    );
+    const body = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     body.setAttribute("x", 0);
     body.setAttribute("y", 10);
     body.setAttribute("width", 120);
@@ -33,28 +30,19 @@ function renderBuses() {
     body.setAttribute("fill", "#FFD600");
     body.setAttribute("stroke", "black");
 
-    const wheel1 = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "circle"
-    );
+    const wheel1 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     wheel1.setAttribute("cx", 25);
     wheel1.setAttribute("cy", 55);
     wheel1.setAttribute("r", 8);
     wheel1.setAttribute("fill", "black");
 
-    const wheel2 = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "circle"
-    );
+    const wheel2 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     wheel2.setAttribute("cx", 95);
     wheel2.setAttribute("cy", 55);
     wheel2.setAttribute("r", 8);
     wheel2.setAttribute("fill", "black");
 
-    const text = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "text"
-    );
+    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
     text.setAttribute("x", 60);
     text.setAttribute("y", 38);
     text.setAttribute("font-size", "28");
@@ -167,8 +155,7 @@ async function saveBusState() {
 async function loadBuses() {
   try {
     const res = await fetch(
-      "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json?_=" +
-        Date.now(),
+      "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json?_=" + Date.now(),
       { cache: "no-store" }
     );
     if (!res.ok) throw new Error("Fetch error: " + res.status);
@@ -180,6 +167,5 @@ async function loadBuses() {
   }
 }
 
-// ------------------ AUTO REFRESH ------------------
-setInterval(loadBuses, 2000);
-loadBuses();
+// ------------------ INITIAL LOAD ------------------
+loadBuses(); // load once at page load, no auto-refresh to prevent snapping
