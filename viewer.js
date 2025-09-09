@@ -1,18 +1,11 @@
-const JSON_URL = "map-state-midday.json";
+const URL = "./map-state-midday.json"; // GitHub JSON path
 let buses = [];
 
-async function loadBuses() {
-  try {
-    const res = await fetch(JSON_URL);
-    const data = await res.json();
-    buses = data.buses || [];
-    renderBuses();
-  } catch(e){ console.error(e); }
-}
-
+// ------------------ RENDER ------------------
 function renderBuses() {
   const busMap = document.getElementById("busMap");
   document.querySelectorAll(".bus").forEach(el => el.remove());
+
   buses.forEach(bus => {
     const g = document.createElementNS("http://www.w3.org/2000/svg","g");
     g.setAttribute("class","bus");
@@ -41,4 +34,18 @@ function renderBuses() {
   });
 }
 
+// ------------------ LOAD ------------------
+async function loadBuses() {
+  try {
+    const res = await fetch(URL + "?_=" + Date.now());
+    if(!res.ok) return;
+    buses = await res.json();
+    renderBuses();
+  } catch(e) {
+    console.error("Load error:", e);
+  }
+}
+
+// ------------------ AUTO REFRESH ------------------
+setInterval(loadBuses, 2000);
 loadBuses();
