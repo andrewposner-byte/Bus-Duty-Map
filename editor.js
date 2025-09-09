@@ -1,4 +1,4 @@
-const URL = "https://andrewposner-byte.github.io/Bus-Duty-Map/map-state-midday.json"; // points to GitHub JSON
+const URL = "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/map-state-midday.json";
 
 let buses = [];
 let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
