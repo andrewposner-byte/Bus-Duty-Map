@@ -1,4 +1,18 @@
-const URL = "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/map-state-midday.json";
+// Interactive.js for Bus Duty Lead
+// Allows dragging buses and saving positions to GitHub
+
+// Your repo info
+const OWNER = "andrewposner-byte";   // GitHub username
+const REPO = "Bus-Duty-Map";         // Repository name
+const FILE_PATH = "map-state-midday.json"; // JSON filename
+const BRANCH = "main";               // Branch name
+
+// ⚠️ Replace with your GitHub Personal Access Token (classic, repo scope)
+const TOKEN = "YOUR_GITHUB_TOKEN_HERE";
+
+// GitHub API URLs
+const RAW_URL = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${FILE_PATH}`;
+const API_URL = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`;
 
 let buses = [];
 let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
@@ -6,6 +20,7 @@ let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
 // ------------------ RENDER ------------------
 function renderBuses() {
   const busMap = document.getElementById("busMap");
+  if (!busMap) return;
   document.querySelectorAll(".bus").forEach(el => el.remove());
 
   buses.forEach(bus => {
@@ -33,108 +48,104 @@ function renderBuses() {
     text.textContent = bus.id;
 
     g.appendChild(body); g.appendChild(wheel1); g.appendChild(wheel2); g.appendChild(text);
-    g.addEventListener("mousedown", e=>startDrag(e,g));
-    g.addEventListener("touchstart", e=>startDrag(e.touches[0], g));
-    g.addEventListener("contextmenu", e=>{ e.preventDefault(); deleteBus(bus.id); });
     busMap.appendChild(g);
+
+    // Drag listeners
+    g.addEventListener("mousedown", startDrag);
+    g.addEventListener("touchstart", startDrag);
   });
 }
 
-// ------------------ BUS CONTROL ------------------
-function addBus() {
-  const id = document.getElementById("busId").value.trim() || String(buses.length+1);
-  buses.push({ id, x:120 + buses.length*40, y:600 });
-  renderBuses();
-  saveBusState();
+// ------------------ LOAD ------------------
+async function loadBuses() {
+  try {
+    const res = await fetch(RAW_URL + "?_=" + Date.now(), { cache:"no-store" });
+    const data = await res.json();
+    buses = Array.isArray(data) ? data : data.buses || [];
+    renderBuses();
+  } catch(e) { console.error("Load error:", e); }
 }
 
-function startDrag(evt, element) {
+// ------------------ SAVE ------------------
+async function saveBuses() {
+  try {
+    // 1. Get the latest file SHA (GitHub requires it for updates)
+    const res = await fetch(API_URL, {
+      headers: { Authorization: `token ${TOKEN}` }
+    });
+    const fileData = await res.json();
+    const sha = fileData.sha;
+
+    // 2. Encode and send updated content
+    const updatedContent = btoa(JSON.stringify({ buses }, null, 2));
+
+    await fetch(API_URL, {
+      method: "PUT",
+      headers: {
+        Authorization: `token ${TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: "Update bus positions",
+        content: updatedContent,
+        sha: sha,
+        branch: BRANCH
+      })
+    });
+
+    console.log("✅ Buses saved to GitHub");
+
+  } catch(e) { console.error("Save error:", e); }
+}
+
+// ------------------ DRAG HANDLERS ------------------
+function startDrag(evt) {
   evt.preventDefault();
-  dragTarget = element;
-  dragBusId = element.dataset.id;
-  const transform = element.getAttribute("transform");
-  const match = /translate\(([-\d.]+),([-\d.]+)\)/.exec(transform);
-  offsetX = (evt.clientX ?? evt.pageX) - parseFloat(match[1]);
-  offsetY = (evt.clientY ?? evt.pageY) - parseFloat(match[2]);
-  window.addEventListener("mousemove", drag);
-  window.addEventListener("mouseup", endDrag);
-  window.addEventListener("touchmove", touchDrag, { passive: false });
-  window.addEventListener("touchend", endDrag);
+  const pt = getPoint(evt);
+  dragTarget = evt.currentTarget;
+  dragBusId = dragTarget.dataset.id;
+  const transform = dragTarget.getAttribute("transform");
+  const [x,y] = transform.match(/[-\d.]+/g).map(Number);
+  offsetX = pt.x - x;
+  offsetY = pt.y - y;
+  document.addEventListener("mousemove", drag);
+  document.addEventListener("mouseup", endDrag);
+  document.addEventListener("touchmove", drag);
+  document.addEventListener("touchend", endDrag);
 }
 
 function drag(evt) {
-  if(!dragTarget) return;
-  const x = evt.clientX - offsetX;
-  const y = evt.clientY - offsetY;
+  if (!dragTarget) return;
+  const pt = getPoint(evt);
+  const x = pt.x - offsetX, y = pt.y - offsetY;
   dragTarget.setAttribute("transform",`translate(${x},${y})`);
 }
 
-function touchDrag(evt){
-  if(evt.touches.length){
-    evt.preventDefault();
-    drag(evt.touches[0]);
-  }
-}
-
-function endDrag(evt){
-  if(!dragTarget) return;
-  const id = dragTarget.dataset.id;
+function endDrag(evt) {
+  if (!dragTarget) return;
   const transform = dragTarget.getAttribute("transform");
-  const match = /translate\(([-\d.]+),([-\d.]+)\)/.exec(transform);
-  const x = parseFloat(match[1]), y = parseFloat(match[2]);
-  const bus = buses.find(b=>b.id===id);
-  if(bus){ bus.x=x; bus.y=y; saveBusState(); }
-  dragTarget=null;
-  dragBusId=null;
-  window.removeEventListener("mousemove", drag);
-  window.removeEventListener("mouseup", endDrag);
-  window.removeEventListener("touchmove", touchDrag);
-  window.removeEventListener("touchend", endDrag);
+  const [x,y] = transform.match(/[-\d.]+/g).map(Number);
+
+  const bus = buses.find(b => b.id === dragBusId);
+  if (bus) { bus.x = x; bus.y = y; }
+
+  dragTarget = null; dragBusId = null;
+  saveBuses();
+
+  document.removeEventListener("mousemove", drag);
+  document.removeEventListener("mouseup", endDrag);
+  document.removeEventListener("touchmove", drag);
+  document.removeEventListener("touchend", endDrag);
 }
 
-function deleteBus(id){
-  const idx = buses.findIndex(b=>b.id===id);
-  if(idx>=0){
-    buses.splice(idx,1);
-    saveBusState();
-    renderBuses();
-  }
+// ------------------ HELPERS ------------------
+function getPoint(evt) {
+  if (evt.touches) evt = evt.touches[0];
+  const svg = document.getElementById("busMap");
+  const pt = svg.createSVGPoint();
+  pt.x = evt.clientX; pt.y = evt.clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
 
-// ------------------ SAVE / LOAD ------------------
-async function saveBusState(){
-  try {
-    // Save JSON back to GitHub via API (requires authentication)
-    // For simple static demo, localStorage can simulate save
-    localStorage.setItem("buses", JSON.stringify(buses));
-    document.getElementById("status").textContent = "Saved ✓";
-  } catch(e){
-    console.error("Save error:", e);
-    document.getElementById("status").textContent = "Save error";
-  }
-}
-
-async function loadBuses() {
-  try {
-    // Load buses from GitHub JSON
-    const res = await fetch(URL + "?_=" + Date.now());
-    if(!res.ok) return;
-    const serverBuses = await res.json();
-    // Keep dragging bus in place
-    serverBuses.forEach(serverBus => {
-      if(dragBusId && serverBus.id === dragBusId) return;
-      const localBus = buses.find(b => b.id===serverBus.id);
-      if(localBus){
-        localBus.x = serverBus.x;
-        localBus.y = serverBus.y;
-      } else {
-        buses.push(serverBus);
-      }
-    });
-    renderBuses();
-  } catch(e){ console.error("Load error:", e); }
-}
-
-// ------------------ AUTO REFRESH ------------------
-setInterval(loadBuses, 2000);
+// ------------------ INIT ------------------
 loadBuses();
