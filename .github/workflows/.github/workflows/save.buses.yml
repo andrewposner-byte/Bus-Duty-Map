@@ -1,26 +1,25 @@
-name: Save Bus State
+name: Save Buses
 
 on:
-  repository_dispatch:
-    types: [update-buses]
+  workflow_dispatch:
+    inputs:
+      buses:
+        description: 'Buses JSON'
+        required: true
 
 jobs:
-  update-json:
+  save:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Update JSON
+      - name: Save buses JSON
         run: |
-          echo '${{ github.event.client_payload.data }}' > state.json
-
-      - name: Commit and push changes
-        run: |
-          git config user.name "bus-map-bot"
-          git config user.email "bus-map-bot@example.com"
-          git add map-state-midday.json
-          git commit -m "Update bus positions" || echo "No changes to commit"
+          echo '${{ github.event.inputs.buses }}' > state.json
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add state.json
+          git commit -m "Update bus state"
           git push
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GH_PAT: ${{ secrets.GH_PAT }}
