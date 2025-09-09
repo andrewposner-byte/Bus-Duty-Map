@@ -1,10 +1,8 @@
 // ------------------ CONFIG ------------------
-const OWNER = "andrewposner-byte";   // your GitHub username
-const REPO = "Bus-Duty-Map";         // your GitHub repo name
-const FILE_PATH = "state.json";      // file in repo that stores state
-const BRANCH = "main";               // or "master" if your repo uses that
+// Update with your repo details
+const REPO_OWNER = "andrewposner-byte";
+const REPO_NAME = "Bus-Duty-Map";
 
-// ------------------ STATE ------------------
 let buses = [];
 let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
 
@@ -12,6 +10,7 @@ let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
 function renderBuses() {
   const busMap = document.getElementById("busMap");
   document.querySelectorAll(".bus").forEach(el => el.remove());
+  
   buses.forEach(bus => {
     const g = document.createElementNS("http://www.w3.org/2000/svg","g");
     g.setAttribute("class","bus");
@@ -25,16 +24,14 @@ function renderBuses() {
     body.setAttribute("fill","#FFD600"); body.setAttribute("stroke","black");
 
     const wheel1 = document.createElementNS("http://www.w3.org/2000/svg","circle");
-    wheel1.setAttribute("cx",25); wheel1.setAttribute("cy",55);
-    wheel1.setAttribute("r",8); wheel1.setAttribute("fill","black");
+    wheel1.setAttribute("cx",25); wheel1.setAttribute("cy",55); wheel1.setAttribute("r",8); wheel1.setAttribute("fill","black");
     const wheel2 = document.createElementNS("http://www.w3.org/2000/svg","circle");
-    wheel2.setAttribute("cx",95); wheel2.setAttribute("cy",55);
-    wheel2.setAttribute("r",8); wheel2.setAttribute("fill","black");
+    wheel2.setAttribute("cx",95); wheel2.setAttribute("cy",55); wheel2.setAttribute("r",8); wheel2.setAttribute("fill","black");
 
     const text = document.createElementNS("http://www.w3.org/2000/svg","text");
     text.setAttribute("x",60); text.setAttribute("y",38);
     text.setAttribute("font-size","28");
-    text.setAttribute("font-weight","bold");
+    text.setAttribute("font-weight","bold"); 
     text.setAttribute("text-anchor","middle");
     text.textContent = bus.id;
 
@@ -42,6 +39,7 @@ function renderBuses() {
     g.addEventListener("mousedown", e=>startDrag(e,g));
     g.addEventListener("touchstart", e=>startDrag(e.touches[0], g));
     g.addEventListener("contextmenu", e=>{ e.preventDefault(); deleteBus(bus.id); });
+
     busMap.appendChild(g);
   });
 }
@@ -51,7 +49,7 @@ function addBus() {
   const id = document.getElementById("busId").value.trim() || String(buses.length+1);
   buses.push({ id, x:120 + buses.length*40, y:600 });
   renderBuses();
-  saveBusState();
+  saveBuses();
 }
 
 function startDrag(evt, element) {
@@ -89,7 +87,7 @@ function endDrag(evt){
   const match = /translate\(([-\d.]+),([-\d.]+)\)/.exec(transform);
   const x = parseFloat(match[1]), y = parseFloat(match[2]);
   const bus = buses.find(b=>b.id===id);
-  if(bus){ bus.x=x; bus.y=y; saveBusState(); }
+  if(bus){ bus.x=x; bus.y=y; saveBuses(); }
   dragTarget=null;
   dragBusId=null;
   window.removeEventListener("mousemove", drag);
@@ -102,44 +100,41 @@ function deleteBus(id){
   const idx = buses.findIndex(b=>b.id===id);
   if(idx>=0){
     buses.splice(idx,1);
-    saveBusState();
+    saveBuses();
     renderBuses();
   }
 }
 
 // ------------------ SAVE / LOAD ------------------
-async function saveBusState(){
+// Save using GitHub Issues (workflow will commit to JSON)
+async function saveBuses(){
   try {
-    const res = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE_PATH}`, {
-      method: "PUT",
-      headers: {
-        "Authorization": `token ${GH_PAT}`,   // GH_PAT will be injected by GitHub Actions
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        message: "Update bus state",
-        content: btoa(JSON.stringify({ buses }, null, 2)),
-        branch: BRANCH,
-        sha: window.currentSha || undefined
-      })
-    });
-
-    const data = await res.json();
-    if (data.content && data.content.sha) {
-      window.currentSha = data.content.sha; // store latest SHA for next update
-    }
-
+    const res = await fetch(
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues`,
+      {
+        method: "POST",
+        headers: {
+          "Accept": "application/vnd.github+json",
+        },
+        body: JSON.stringify({
+          title: "Bus Update",
+          body: JSON.stringify(buses),
+        }),
+      }
+    );
+    if(!res.ok) throw new Error(`GitHub API error: ${res.status}`);
     document.getElementById("status").textContent = "Saved ✓";
-  } catch(e){
-    console.error("Save error:", e);
+  } catch(err) {
+    console.error("Save error:", err);
     document.getElementById("status").textContent = "Save error";
   }
 }
 
+// Load current state from GitHub Pages JSON
 async function loadBuses() {
   try {
-    const res = await fetch(`https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${FILE_PATH}?_=${Date.now()}`, { cache:"no-store" });
-    if(!res.ok) return;
+    const res = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/map-state-midday.json?_=${Date.now()}`);
+    if(!res.ok) throw new Error(`Fetch error: ${res.status}`);
     const data = await res.json();
     const serverBuses = data.buses || [];
     serverBuses.forEach(serverBus => {
@@ -153,7 +148,7 @@ async function loadBuses() {
       }
     });
     renderBuses();
-  } catch(e) { console.error("Load error:", e); }
+  } catch(err) { console.error("Load error:", err); }
 }
 
 // ------------------ AUTO REFRESH ------------------
