@@ -1,8 +1,7 @@
 // editor.js - for Bus Duty Map editor
-// Uses GitHub Actions workflow to save state.json safely
+// Uses Google Apps Script to safely save state.json
 
-const WORKFLOW_DISPATCH_URL =
-  "https://api.github.com/repos/andrewposner-byte/Bus-Duty-Map/actions/workflows/save-buses.yml/dispatches";
+const SAVE_URL = "https://script.google.com/macros/s/AKfycbyLE_4fkN3-nS66eqvtk7lGulkQ6Imd6lqOg9_ujDmNMhNQ2d4p78_ekHHG2mPOqiFSvQ/exec";
 
 let buses = [];
 let dragTarget = null,
@@ -148,21 +147,17 @@ function deleteBus(id) {
 // ------------------ SAVE / LOAD ------------------
 async function saveBusState() {
   try {
-    // Dispatch GitHub Actions workflow to update state.json
-    await fetch(WORKFLOW_DISPATCH_URL, {
+    const response = await fetch(SAVE_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/vnd.github.v3+json",
-      },
-      body: JSON.stringify({
-        ref: "main",
-        inputs: {
-          buses: JSON.stringify(buses),
-        },
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ buses }),
     });
-    document.getElementById("status").textContent = "Saved ✓";
+    const result = await response.json();
+    if (result.status === "ok") {
+      document.getElementById("status").textContent = "Saved ✓";
+    } else {
+      throw new Error(result.message || "Unknown error");
+    }
   } catch (e) {
     console.error("Save error:", e);
     document.getElementById("status").textContent = "Save error";
