@@ -1,4 +1,4 @@
-const URL = "./map-state-midday.json"; // GitHub JSON path
+const URL = "https://andrewposner-byte.github.io/Bus-Duty-Map/map-state-midday.json"; // GitHub JSON path
 let buses = [];
 
 // ------------------ RENDER ------------------
