@@ -1,6 +1,5 @@
-// ------------------ CONFIG ------------------
-const REPO_OWNER = "andrewposner-byte";
-const REPO_NAME = "Bus-Duty-Map";
+// URL to your GitHub-hosted JSON file
+const STATE_URL = "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json";
 
 let buses = [];
 
@@ -9,12 +8,10 @@ function renderBuses() {
   const busMap = document.getElementById("busMap");
   document.querySelectorAll(".bus").forEach(el => el.remove());
 
-  if (!Array.isArray(buses)) return; // safeguard
-
   buses.forEach(bus => {
     const g = document.createElementNS("http://www.w3.org/2000/svg","g");
     g.setAttribute("class","bus");
-    g.setAttribute("transform",`translate(${bus.x},${bus.y})`);
+    g.setAttribute("transform", `translate(${bus.x},${bus.y})`);
 
     const body = document.createElementNS("http://www.w3.org/2000/svg","rect");
     body.setAttribute("x",0); body.setAttribute("y",10);
@@ -39,6 +36,7 @@ function renderBuses() {
     g.appendChild(wheel2);
     g.appendChild(text);
 
+    // No drag or context menu handlers
     busMap.appendChild(g);
   });
 }
@@ -46,12 +44,14 @@ function renderBuses() {
 // ------------------ LOAD ------------------
 async function loadBuses() {
   try {
-    const res = await fetch(`https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/state.json?_=${Date.now()}`);
-    if(!res.ok) throw new Error(`Fetch error: ${res.status}`);
+    const res = await fetch(STATE_URL + "?_=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error(`Fetch error: ${res.status}`);
     const data = await res.json();
     buses = data.buses || [];
     renderBuses();
-  } catch(err) { console.error("Load error:", err); }
+  } catch (e) {
+    console.error("Load error:", e);
+  }
 }
 
 // ------------------ AUTO REFRESH ------------------
