@@ -1,4 +1,6 @@
-// editor.js - Bus Duty Map Editor using GitHub Actions workflow
+// editor.js - Bus Duty Map Editor with hard-coded GitHub token
+
+const TOKEN = "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"; // <-- your PAT here
 const WORKFLOW_DISPATCH_URL =
   "https://api.github.com/repos/andrewposner-byte/Bus-Duty-Map/actions/workflows/save-buses.yml/dispatches";
 
@@ -126,11 +128,14 @@ async function saveBusState() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": "token " + TOKEN
       },
       body: JSON.stringify({ ref: "main", inputs: { buses: JSON.stringify(buses) } })
     });
+
     if (!response.ok) throw new Error("GitHub API error: " + response.status);
+
     document.getElementById("status").textContent = "Saved ✓";
   } catch (e) {
     console.error("Save error:", e);
