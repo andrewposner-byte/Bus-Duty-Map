@@ -2,7 +2,7 @@
 const WORKFLOW_DISPATCH_URL =
   "https://api.github.com/repos/andrewposner-byte/Bus-Duty-Map/actions/workflows/save-buses.yml/dispatches";
 
-const TOKEN = "YOUR_PERSONAL_ACCESS_TOKEN"; // replace with your GitHub token
+const TOKEN = "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"; // replace with your GitHub token
 
 let buses = [];
 let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
