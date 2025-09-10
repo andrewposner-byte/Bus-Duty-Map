@@ -1,7 +1,7 @@
 // editor.js - for Bus Duty Map editor
-// Uses Google Apps Script to safely save state.json
+// Uses local Node.js proxy to safely save state.json
 
-const SAVE_URL = "https://script.google.com/macros/s/AKfycbyLE_4fkN3-nS66eqvtk7lGulkQ6Imd6lqOg9_ujDmNMhNQ2d4p78_ekHHG2mPOqiFSvQ/exec";
+const SAVE_URL = "http://localhost:3000/save";
 
 let buses = [];
 let dragTarget = null,
@@ -155,7 +155,8 @@ async function saveBusState() {
 async function loadBuses() {
   try {
     const res = await fetch(
-      "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json?_=" + Date.now(),
+      "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json?_=" +
+        Date.now(),
       { cache: "no-store" }
     );
     if (!res.ok) throw new Error("Fetch error: " + res.status);
@@ -167,5 +168,6 @@ async function loadBuses() {
   }
 }
 
-// ------------------ INITIAL LOAD ------------------
-loadBuses(); // load once at page load, no auto-refresh to prevent snapping
+// ------------------ AUTO REFRESH ------------------
+setInterval(loadBuses, 2000);
+loadBuses();
