@@ -1,20 +1,18 @@
-// editor.js - for Bus Duty Map editor
-// Uses local Node.js proxy to safely save state.json
+// editor.js - Bus Duty Map Editor using GitHub Actions workflow
+const WORKFLOW_DISPATCH_URL =
+  "https://api.github.com/repos/andrewposner-byte/Bus-Duty-Map/actions/workflows/save-buses.yml/dispatches";
 
-const SAVE_URL = "http://localhost:3000/save";
+const TOKEN = "YOUR_PERSONAL_ACCESS_TOKEN"; // replace with your GitHub token
 
 let buses = [];
-let dragTarget = null,
-  dragBusId = null,
-  offsetX = 0,
-  offsetY = 0;
+let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
 
 // ------------------ RENDER ------------------
 function renderBuses() {
   const busMap = document.getElementById("busMap");
-  document.querySelectorAll(".bus").forEach((el) => el.remove());
+  document.querySelectorAll(".bus").forEach(el => el.remove());
 
-  buses.forEach((bus) => {
+  buses.forEach(bus => {
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
     g.setAttribute("class", "bus");
     g.setAttribute("transform", `translate(${bus.x},${bus.y})`);
@@ -55,9 +53,9 @@ function renderBuses() {
     g.appendChild(wheel2);
     g.appendChild(text);
 
-    g.addEventListener("mousedown", (e) => startDrag(e, g));
-    g.addEventListener("touchstart", (e) => startDrag(e.touches[0], g));
-    g.addEventListener("contextmenu", (e) => {
+    g.addEventListener("mousedown", e => startDrag(e, g));
+    g.addEventListener("touchstart", e => startDrag(e.touches[0], g));
+    g.addEventListener("contextmenu", e => {
       e.preventDefault();
       deleteBus(bus.id);
     });
@@ -107,14 +105,9 @@ function endDrag(evt) {
   const id = dragTarget.dataset.id;
   const transform = dragTarget.getAttribute("transform");
   const match = /translate\(([-\d.]+),([-\d.]+)\)/.exec(transform);
-  const x = parseFloat(match[1]),
-    y = parseFloat(match[2]);
-  const bus = buses.find((b) => b.id === id);
-  if (bus) {
-    bus.x = x;
-    bus.y = y;
-    saveBusState();
-  }
+  const x = parseFloat(match[1]), y = parseFloat(match[2]);
+  const bus = buses.find(b => b.id === id);
+  if (bus) { bus.x = x; bus.y = y; saveBusState(); }
   dragTarget = null;
   dragBusId = null;
   window.removeEventListener("mousemove", drag);
@@ -124,28 +117,24 @@ function endDrag(evt) {
 }
 
 function deleteBus(id) {
-  const idx = buses.findIndex((b) => b.id === id);
-  if (idx >= 0) {
-    buses.splice(idx, 1);
-    saveBusState();
-    renderBuses();
-  }
+  const idx = buses.findIndex(b => b.id === id);
+  if (idx >= 0) { buses.splice(idx, 1); saveBusState(); renderBuses(); }
 }
 
 // ------------------ SAVE / LOAD ------------------
 async function saveBusState() {
   try {
-    const response = await fetch(SAVE_URL, {
+    const response = await fetch(WORKFLOW_DISPATCH_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ buses }),
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": "token " + TOKEN
+      },
+      body: JSON.stringify({ ref: "main", inputs: { buses: JSON.stringify(buses) } })
     });
-    const result = await response.json();
-    if (result.status === "ok") {
-      document.getElementById("status").textContent = "Saved ✓";
-    } else {
-      throw new Error(result.message || "Unknown error");
-    }
+    if (!response.ok) throw new Error("GitHub API error: " + response.status);
+    document.getElementById("status").textContent = "Saved ✓";
   } catch (e) {
     console.error("Save error:", e);
     document.getElementById("status").textContent = "Save error";
@@ -155,17 +144,13 @@ async function saveBusState() {
 async function loadBuses() {
   try {
     const res = await fetch(
-      "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json?_=" +
-        Date.now(),
+      "https://raw.githubusercontent.com/andrewposner-byte/Bus-Duty-Map/main/state.json?_=" + Date.now(),
       { cache: "no-store" }
     );
-    if (!res.ok) throw new Error("Fetch error: " + res.status);
     const data = await res.json();
     buses = data.buses || [];
     renderBuses();
-  } catch (e) {
-    console.error("Load error:", e);
-  }
+  } catch (e) { console.error("Load error:", e); }
 }
 
 // ------------------ AUTO REFRESH ------------------
