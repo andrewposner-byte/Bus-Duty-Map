@@ -22,4 +22,4 @@ jobs:
           git commit -m "Update bus state"
           git push
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
+          GH_PAT: ${{ secrets.GH_TOKEN }}
