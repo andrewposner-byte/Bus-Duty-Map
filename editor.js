@@ -2,8 +2,6 @@
 const WORKFLOW_DISPATCH_URL =
   "https://api.github.com/repos/andrewposner-byte/Bus-Duty-Map/actions/workflows/save-buses.yml/dispatches";
 
-const TOKEN = "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"; // replace with your GitHub token
-
 let buses = [];
 let dragTarget = null, dragBusId = null, offsetX = 0, offsetY = 0;
 
@@ -128,8 +126,7 @@ async function saveBusState() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Accept": "application/vnd.github.v3+json",
-        "Authorization": "token " + TOKEN
+        "Accept": "application/vnd.github.v3+json"
       },
       body: JSON.stringify({ ref: "main", inputs: { buses: JSON.stringify(buses) } })
     });
